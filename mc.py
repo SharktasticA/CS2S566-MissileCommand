@@ -132,17 +132,17 @@ class explosion:
         #updater: checks whether explosion needs to expand on contract
         global maxRadius
         if self._expandCompleted:
-            pygame.draw.circle(screen, black, [int(self._pos[0]), int(self._pos[1])], maxRadius, 0) #returns area to black when explosion decays
+            pygame.draw.circle(screen, black, [int(self._pos[0]), int(self._pos[1])], maxRadius + 2, 0) #returns area to black when explosion decays
             if self._radius > 0:
                 pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) #red outline
-                self._radius -= 1
+                self._radius -= 8
             else:
                 self._explosionComplete = True
                 removeExplosion(self)
         else:
-            if self._radius != maxRadius:
+            if self._radius < maxRadius:
                 pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) 
-                self._radius += 1
+                self._radius += 8
             else:
                 self._expandCompleted = True
 
