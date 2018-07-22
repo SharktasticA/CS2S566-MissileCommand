@@ -39,7 +39,3 @@ class bres:
             self.err = self.err + self.dx
             self.y0 = self.y0 + self.sy
         return [self.x0, self.y0]
-    def getCurrentPosition(self):
-        return [self.x0, self.y0]
-    def finished(self):
-        return self.end

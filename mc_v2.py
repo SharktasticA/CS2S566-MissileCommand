@@ -27,6 +27,7 @@ maxAmmo = 32 # Amount of missiles the battery can hold
 # OBJECTS + THEIR CONTAINERS
 battery = None
 cities = []
+missiles = []
 
 # CITY OBJECT
 class city:
@@ -43,7 +44,7 @@ class city:
         # Polls for updates: NOT PRESENTLY NEEDED
         pass
     def check(self, e):
-        # Checks if the city has been hit with by given explosion 
+        # Checks if the city has been hit by given explosion 
         # Parametres: (e) explosion to test bounds of
         if (sqr(e._radius) > sqr(e._pos[0] - self._top[0]) + sqr(e._pos[1] - self._top[1])):
             cities.remove(self)
@@ -62,17 +63,55 @@ class battery:
         pygame.draw.rect(screen, blue, (self._pos[0], self._pos[1], bWidth, bHeight), 0)
     def update(self):
         # Polls for updates: request ammo count draw update
+        # Erase previous value
+        drawText(str(self._ammo + 1), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', blue) 
+        # Render new one
         drawText(str(self._ammo), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', white) 
-        pass
     def fire(self, pos):
         if (self._ammo > 0):
             self._ammo -= 1
-            #createMissile(self._aperture, pos)
+            createMissile(self._aperture, pos)
     def check(self, e):
-        # Checks if the missile battery has been hit with by given explosion 
+        # Checks if the missile battery has been hit by given explosion 
         # Parametres: (e) explosion to test bounds of
         if (sqr(e._radius) > sqr(e._pos[0] - self._aperture[0]) + sqr(e._pos[1] - self._aperture[1])):
             remove(self)
+
+# MISSILE OBJECT
+class missile:
+    def __init__(self, start, end):
+        # Missile constructor
+        # Parametres: (start) start position, (end) end position
+        self._startPos = start
+        self._endPos = end
+        self._pos = start
+        self._line = bres.bres(start, end) # Use Bres' algorithm to initialise line calculating function
+        self._completed = False
+    def update(self):
+        # Polls for updates: checks whether missile needs to draw or erase it's trail
+        if (not self._completed):
+            if ((int(self._pos[0]) != int(self._endPos[0])) or (int(self._pos[1]) != int(self._endPos[1]))):
+                # Draws line sequentially if missile is still in transit
+                self._pos = self._line.getNext()
+                pygame.draw.line(screen, white, self._pos, self._pos, 1)
+            else:
+                self._completed = True
+        else:
+            # Quickly erase line with a black one if missile has been detonated
+            self._eraseLine = bres.bres(self._startPos, self._endPos)
+            self._pos = self._startPos
+            while (int(self._pos[0]) != int(self._endPos[0])) or (int(self._pos[1]) != int(self._endPos[1])):
+                # Iterate while erasing line is not completed
+                self._pos = self._eraseLine.getNext()
+                pygame.draw.line(screen, black, self._pos, self._pos, 1)
+            #createExplosion(self._pos)
+            missiles.remove(self)
+    def check(self, e):
+        # Checks if the missile has been hit by given explosion 
+        # Parametres: (e) explosion to test bounds of
+        if (sqr(e._radius) > sqr(e._pos[0] - self._pos[0]) + sqr(e._pos[1] - self._pos[1])):
+            self._completed = True
+            self._endPos = self._pos
 
 # UTILITY FUNCTIONS
 def sqr(x):
@@ -101,6 +140,13 @@ def createCities():
     cities += [city([((rX - cWidth) / 10) * 8, rH - cHeight])]
     cities += [city([((rX - cWidth) / 10) * 9, rH - cHeight])]
 
+def createMissile(start, end):
+    # Creates missile on que
+    # Parametres: (start) start position, (end) end position
+    global missiles
+    missiles += [missile(start, end)]
+    pygame.time.set_timer(USEREVENT + 1, eventDelay)
+
 # GAME LOOP FUNCTIONS
 def update():
     # Update per frame method
@@ -108,6 +154,9 @@ def update():
     # Poll for updates from game objects
     if (battery != None):
         battery.update()
+    if missiles != []:
+        for m in missiles:
+            m.update()
 
     # Redraw display
     pygame.display.flip()
@@ -122,8 +171,7 @@ def waitForEvent():
         if event.type == KEYDOWN and event.key == K_ESCAPE:
             sys.exit(0)
         if event.type == pygame.MOUSEBUTTONDOWN:
-            sys.exit(0)
-            #firing(event.button, pygame.mouse.get_pos())
+            battery.fire(pygame.mouse.get_pos())
         if event.type == USEREVENT + 1:
             update()
             #createAttack() # Attempt to create an attack each turn
