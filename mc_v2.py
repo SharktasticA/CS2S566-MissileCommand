@@ -23,11 +23,13 @@ eventDelay = 16 # Number of milliseconds of delay before generating a USEREVENT
 rateofAttack = 128 # Value for comparing against PRNG to decide when to launch a missile
 attackNumber = 32 # Amount of attacks for the turn
 maxAmmo = 32 # Amount of missiles the battery can hold
+expRate = 4 # Speed in which explosions expand and contract ***must be even***
 
 # OBJECTS + THEIR CONTAINERS
 battery = None
 cities = []
 missiles = []
+explosions = []
 
 # CITY OBJECT
 class city:
@@ -63,11 +65,11 @@ class battery:
         pygame.draw.rect(screen, blue, (self._pos[0], self._pos[1], bWidth, bHeight), 0)
     def update(self):
         # Polls for updates: request ammo count draw update
-        # Erase previous value
-        drawText(str(self._ammo + 1), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', blue) 
-        # Render new one
+        self.draw()
+        # Render latest ammo value
         drawText(str(self._ammo), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', white) 
     def fire(self, pos):
+        # Fires if ammo value allows
         if (self._ammo > 0):
             self._ammo -= 1
             createMissile(self._aperture, pos)
@@ -90,6 +92,7 @@ class missile:
     def update(self):
         # Polls for updates: checks whether missile needs to draw or erase it's trail
         if (not self._completed):
+            # Is missile has not reached destination, poll for line drawing
             if ((int(self._pos[0]) != int(self._endPos[0])) or (int(self._pos[1]) != int(self._endPos[1]))):
                 # Draws line sequentially if missile is still in transit
                 self._pos = self._line.getNext()
@@ -104,7 +107,7 @@ class missile:
                 # Iterate while erasing line is not completed
                 self._pos = self._eraseLine.getNext()
                 pygame.draw.line(screen, black, self._pos, self._pos, 1)
-            #createExplosion(self._pos)
+            createExplosion(self._pos)
             missiles.remove(self)
     def check(self, e):
         # Checks if the missile has been hit by given explosion 
@@ -112,6 +115,35 @@ class missile:
         if (sqr(e._radius) > sqr(e._pos[0] - self._pos[0]) + sqr(e._pos[1] - self._pos[1])):
             self._completed = True
             self._endPos = self._pos
+
+# EXPLOSION ENTITY
+class explosion:
+    def __init__(self, pos):
+        # Explosion constructor
+        # Parametres: (pos) epicenter for explosion
+        self._pos = pos
+        self._radius = 0
+        self._expandCompleted = False # Flags whether the initial render is completed
+        self._explosionCompleted = False # Flags whether the entire explosion is completed
+    def update(self):
+        # Poll for updates: checks whether explosion needs to expand on contract
+        global expRadius, expRate
+        if self._expandCompleted:
+            pygame.draw.circle(screen, black, [int(self._pos[0]), int(self._pos[1])], expRadius, 0) # Returns area to black when explosion decays
+            if self._radius > 0:
+                pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) # Red outline
+                pygame.draw.circle(screen, orange, [int(self._pos[0]), int(self._pos[1])], (self._radius / 5) * 4, 0) # Orange interior
+                self._radius -= expRate
+            else:
+                self._explosionComplete = True
+                explosions.remove(self)
+        else:
+            if self._radius < expRadius:
+                pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) 
+                pygame.draw.circle(screen, orange, [int(self._pos[0]), int(self._pos[1])], (self._radius / 5) * 4, 0)
+                self._radius += expRate
+            else:
+                self._expandCompleted = True
 
 # UTILITY FUNCTIONS
 def sqr(x):
@@ -147,16 +179,29 @@ def createMissile(start, end):
     missiles += [missile(start, end)]
     pygame.time.set_timer(USEREVENT + 1, eventDelay)
 
+def createExplosion(pos):
+    # Creates an explosion when called
+    # Parametres: (pos) explosion's epicenter
+    global explosions
+    explosions += [explosion(pos)]
+    pygame.time.set_timer(USEREVENT + 1, eventDelay)
+
 # GAME LOOP FUNCTIONS
 def update():
     # Update per frame method
 
     # Poll for updates from game objects
+    if (cities != []):
+        for c in cities:
+            c.update()
     if (battery != None):
         battery.update()
     if missiles != []:
         for m in missiles:
             m.update()
+    if (explosions != []):
+        for e in explosions:
+            e.update()
 
     # Redraw display
     pygame.display.flip()
