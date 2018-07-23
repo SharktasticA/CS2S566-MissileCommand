@@ -18,10 +18,10 @@ bWidth, bHeight = 0, 0 # Missile battery sizing ***set in main()***
 expRadius = 64 # Maximum explosion radius
 
 # GAME GLOBALS
-rX, rH = 0, 0 # Game resolution ***set in main()***
+rX, rY = 0, 0 # Game resolution ***set in main()***
 eventDelay = 16 # Number of milliseconds of delay before generating a USEREVENT
-rateofAttack = 128 # Value for comparing against PRNG to decide when to launch a missile
-attackNumber = 32 # Amount of attacks for the turn
+rateOfAttack = 512 # Value for comparing against PRNG to decide when to launch a missile
+attacksDue = 16 # Amount of attacks for the turn
 maxAmmo = 32 # Amount of missiles the battery can hold
 expRate = 4 # Speed in which explosions expand and contract ***must be even***
 
@@ -67,7 +67,7 @@ class battery:
         # Polls for updates: request ammo count draw update
         self.draw()
         # Render latest ammo value
-        drawText(str(self._ammo), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', white) 
+        drawText(str(self._ammo), (self._pos[0] + (bWidth / 3), self._pos[1] + (bHeight / 3)), 'Monospace', white, 32) 
     def fire(self, pos):
         # Fires if ammo value allows
         if (self._ammo > 0):
@@ -92,7 +92,7 @@ class missile:
     def update(self):
         # Polls for updates: checks whether missile needs to draw or erase it's trail
         if (not self._completed):
-            # Is missile has not reached destination, poll for line drawing
+            # If missile has not reached destination, poll for line drawing progress
             if ((int(self._pos[0]) != int(self._endPos[0])) or (int(self._pos[1]) != int(self._endPos[1]))):
                 # Draws line sequentially if missile is still in transit
                 self._pos = self._line.getNext()
@@ -128,22 +128,26 @@ class explosion:
     def update(self):
         # Poll for updates: checks whether explosion needs to expand on contract
         global expRadius, expRate
-        if self._expandCompleted:
-            pygame.draw.circle(screen, black, [int(self._pos[0]), int(self._pos[1])], expRadius, 0) # Returns area to black when explosion decays
-            if self._radius > 0:
-                pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) # Red outline
-                pygame.draw.circle(screen, orange, [int(self._pos[0]), int(self._pos[1])], (self._radius / 5) * 4, 0) # Orange interior
-                self._radius -= expRate
-            else:
-                self._explosionComplete = True
-                explosions.remove(self)
-        else:
-            if self._radius < expRadius:
+        if (not self._expandCompleted):
+            # If explosion has not completed, draw explosion expanding
+            if (self._radius < expRadius):
                 pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0) 
                 pygame.draw.circle(screen, orange, [int(self._pos[0]), int(self._pos[1])], (self._radius / 5) * 4, 0)
                 self._radius += expRate
             else:
+                # Flag once initial expansion is complete
                 self._expandCompleted = True
+        else:
+            # Instantly draw black circle to cover previous draws
+            pygame.draw.circle(screen, black, [int(self._pos[0]), int(self._pos[1])], expRadius, 0)
+            if (self._radius > 0):
+                # If contraction has not completed, draw explosion collasping
+                pygame.draw.circle(screen, red, [int(self._pos[0]), int(self._pos[1])], self._radius, 0)
+                pygame.draw.circle(screen, orange, [int(self._pos[0]), int(self._pos[1])], (self._radius / 5) * 4, 0)
+                self._radius -= expRate
+            else:
+                self._explosionComplete = True
+                explosions.remove(self)
 
 # UTILITY FUNCTIONS
 def sqr(x):
@@ -151,11 +155,11 @@ def sqr(x):
     # Parametres: (x) no to square
     return x * x 
 
-def drawText(txt, pos, font, col):
+def drawText(txt, pos, font, col, sze):
     # Attempts to draw text with given params 
-    # Parametres: (txt) text contents, (pos) start pos, (font) text font, (col) text colour
+    # Parametres: (txt) text contents, (pos) start pos, (font) text font, (col) text colour, (sze) text size
     try: # Attempt to draw
-        font = pygame.font.SysFont(font, 32)
+        font = pygame.font.SysFont(font, sze)
         text = font.render(txt, False, col)
         screen.blit(text, pos)
     except: # Catch if desired font font is not present
@@ -165,12 +169,12 @@ def drawText(txt, pos, font, col):
 def createCities():
     # Creates 6 cities with relative to resolution positioning
     global cities
-    cities += [city([((rX + cWidth) / 10) * 1, rH - cHeight])]
-    cities += [city([((rX + cWidth) / 10) * 2, rH - cHeight])]
-    cities += [city([((rX + cWidth) / 10) * 3, rH - cHeight])]
-    cities += [city([((rX - cWidth) / 10) * 7, rH - cHeight])]
-    cities += [city([((rX - cWidth) / 10) * 8, rH - cHeight])]
-    cities += [city([((rX - cWidth) / 10) * 9, rH - cHeight])]
+    cities += [city([((rX + cWidth) / 10) * 1, rY - cHeight])]
+    cities += [city([((rX + cWidth) / 10) * 2, rY - cHeight])]
+    cities += [city([((rX + cWidth) / 10) * 3, rY - cHeight])]
+    cities += [city([((rX - cWidth) / 10) * 7, rY - cHeight])]
+    cities += [city([((rX - cWidth) / 10) * 8, rY - cHeight])]
+    cities += [city([((rX - cWidth) / 10) * 9, rY - cHeight])]
 
 def createMissile(start, end):
     # Creates missile on que
@@ -186,10 +190,30 @@ def createExplosion(pos):
     explosions += [explosion(pos)]
     pygame.time.set_timer(USEREVENT + 1, eventDelay)
 
+def createAttack():
+    # Creates a randomised attack on one of the cities
+    global attacksDue
+    if (attacksDue > 0):
+        if (random.randint(1, rateOfAttack) == int((rateOfAttack / 2))): # Check if random number meets the criteria for creating a missile
+            attacksDue -= 1
+            c = cities[random.randint(0, len(cities) - 1)] # Get the target city
+            createMissile([random.randint (0, rX - 1), 0], c._top)
+
 # GAME LOOP FUNCTIONS
+def checkCollisions(obj):
+    # Sequentially compares a provided object
+    # Parametres: (obj) provided object
+    if (cities != []):
+        for c in cities:
+            if (c in cities):
+                c.check(obj)
+    if (missiles != []):
+        for m in missiles:
+            if (m in missiles):
+                m.check(obj)
+
 def update():
     # Update per frame method
-
     # Poll for updates from game objects
     if (cities != []):
         for c in cities:
@@ -202,6 +226,7 @@ def update():
     if (explosions != []):
         for e in explosions:
             e.update()
+            checkCollisions(e)
 
     # Redraw display
     pygame.display.flip()
@@ -211,35 +236,53 @@ def waitForEvent():
     # Actual game loop method
     while True:
         event = pygame.event.wait()
-        if event.type == pygame.QUIT:
+        if (event.type == pygame.QUIT):
             sys.exit(0)
-        if event.type == KEYDOWN and event.key == K_ESCAPE:
+        if ((event.type == KEYDOWN) and (event.key == K_ESCAPE)):
             sys.exit(0)
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if (event.type == pygame.MOUSEBUTTONDOWN):
             battery.fire(pygame.mouse.get_pos())
-        if event.type == USEREVENT + 1:
+        if (event.type == USEREVENT + 1):
             update()
-            #createAttack() # Attempt to create an attack each turn
+            createAttack() # Attempt to create an attack each turn
 
 # MAIN
 def main():
-    global screen, rX, rH, cWidth, cHeight, bWidth, bHeight, battery
+    global screen, rX, rY, cWidth, cHeight, bWidth, bHeight, battery
     pygame.init()
     random.seed()
 
     # Access display information to set resolution
-    rX, rH = pygame.display.Info().current_w, pygame.display.Info().current_h
+    rX, rY = pygame.display.Info().current_w, pygame.display.Info().current_h
 
     # Set city and missile battery size based on resolution for scaling
     cWidth = cHeight = rX * 0.025
     bWidth = bHeight = rX * 0.05
 
     # Create game screen object
-    screen = pygame.display.set_mode([rX, rH], pygame.FULLSCREEN)
+    screen = pygame.display.set_mode([rX, rY], pygame.FULLSCREEN)
+
+    # Draw welcome screen
+    drawText("KAmissilecommand", [rX / 8, rY / 8], 'Monospace', white, 64)
+    drawText("Khalid Ali (http://khalidali.co.uk)", [rX / 8, rY / 5], 'Monospace', white, 32)
+    drawText("Press enter to begin...", [rX / 8, rY / 4], 'Monospace', white, 32)
+    pygame.display.flip()
+    pygame.time.set_timer(USEREVENT + 1, eventDelay)
+
+    # Wait for user keypress to start
+    while True:
+        event = pygame.event.wait()
+        if (event.type == pygame.QUIT):
+            sys.exit(0)
+        if ((event.type == KEYDOWN) and (event.key == K_ESCAPE)):
+            sys.exit(0)
+        if ((event.type == KEYDOWN) and (event.key == K_RETURN)):
+            break
+    screen.fill(black)
 
     # Create game objects
     createCities()
-    battery = battery([((rX + bWidth) / 10) * 4.5, rH - bHeight])
+    battery = battery([((rX + bWidth) / 10) * 4.5, rY - bHeight])
 
     # Begin game loop
     update()

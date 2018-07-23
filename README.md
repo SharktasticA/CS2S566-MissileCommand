@@ -1,4 +1,6 @@
 # Game-KAmissilecommand
-Simplistic Python lookalike of the 1980 hit arcade game Missile Command by Atari, Inc. This was originally developed as a coursework piece for my Year 2 university module "Tool Development for Computer Games", which was graded as a first/distinction (of 90%). This is essentially the same but I am due to polish it further when I have the chance. It is a full screen game and only has a single level at the moment.
-# Using
-Run "mc.py" to launch the game. For those wanting to edit/rewrite, please note that this was developed for Python 2.7.14 on Windows 10 Education 64-Bit with Pygame 1.9.1. The solution should work without a problem on Linux as long as the Python and Pygame versions are similar (or possibly with older releases from the last year as of 2018-07-22).
+Simplistic Python lookalike of the 1980 hit arcade game Missile Command by Atari, Inc. This was originally developed as a coursework piece for my Year 2 university module "Tool Development for Computer Games", which was graded as a first/distinction (of 90%). This is essentially the same as the final submission, but it has been rewritten to a better standard of code and commenting after submission and has some substantial bugfixes. It is a full screen game and only has single level (at the moment).
+# Running
+Run "kamc.py" to launch or modify the latest version of the game. "kamc_old.py" is also playable, but it is based off an older version (for the actual coursework but not the final submission) that lacks polish. It is included for referencing my older code.
+# Target platform
+This was developed for Python 2.7.14 on Windows 10 Education 64-Bit with Pygame 1.9.1. The solution *should* work without a problem on Linux as long as the Python and Pygame versions are similar (or possibly with older releases from the last year as of 2018-07-22), although your mileage may vary.
