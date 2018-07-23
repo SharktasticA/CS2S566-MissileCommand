@@ -20,7 +20,7 @@ expRadius = 64 # Maximum explosion radius
 # GAME GLOBALS
 rX, rY = 0, 0 # Game resolution ***set in main()***
 eventDelay = 16 # Number of milliseconds of delay before generating a USEREVENT
-rateOfAttack = 512 # Value for comparing against PRNG to decide when to launch a missile
+rateOfAttack = 256 # Value for comparing against PRNG to decide when to launch a missile
 attacksDue = 16 # Amount of attacks for the turn
 maxAmmo = 32 # Amount of missiles the battery can hold
 expRate = 4 # Speed in which explosions expand and contract ***must be even***
@@ -73,11 +73,6 @@ class battery:
         if (self._ammo > 0):
             self._ammo -= 1
             createMissile(self._aperture, pos)
-    def check(self, e):
-        # Checks if the missile battery has been hit by given explosion 
-        # Parametres: (e) explosion to test bounds of
-        if (sqr(e._radius) > sqr(e._pos[0] - self._aperture[0]) + sqr(e._pos[1] - self._aperture[1])):
-            remove(self)
 
 # MISSILE OBJECT
 class missile:
